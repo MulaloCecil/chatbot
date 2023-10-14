@@ -1,14 +1,6 @@
 import { useState } from "react";
-import "./App.css";
-import OpenAI from 'openai';
-
-
-const apiKey = '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';
-
-const openai = new OpenAI({
-  apiKey,
-  dangerouslyAllowBrowser: true,
-});
+import axios from 'axios';
+const apiKey = import.meta.env.VITE_API_BASE_URL;
 
 function App() {
   const [message, setMessage] = useState("");
@@ -20,61 +12,68 @@ function App() {
 
     if (!message) return;
     setIsTyping(true);
-    scrollTo(0,1e10)
+    scrollTo(0, 1e10);
 
     let msgs = chats;
     msgs.push({ role: "user", content: message });
     setChats(msgs);
 
     setMessage("");
-    console.log(openai); 
-    await openai
-    .createChatCompletion({
-      model: "gpt-3.5-turbo",
-      messages: [
+
+    try {
+      const response = await axios.post(
+        'https://api.openai.com/v1/chat/completions',
         {
-          role: "system",
-          content:
-            "You are a CastroSolutions. You can help with graphic design tasks",
+          model: "gpt-3.5-turbo",
+          messages: [
+            {
+              role: "system",
+              content: "You are a CastroSolutions. You can help with all the requests",
+            },
+            ...chats,
+          ],
         },
-        ...chats,
-      ],
-    })
-    .then((res) => {
-      console.log(res);
-      const newMessage = res.data.choices[0].message;
-      const updatedChats = [...msgs, { role: "AI", content: newMessage }];
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      console.log(response);
+      const newMessage = response.data.choices[0].message;
+      const updatedChats = [...msgs, { role: "Solutions Bot", content: newMessage }];
       setChats(updatedChats);
       setIsTyping(false);
       scrollTo(0, 1e10);
-    })
-  
-      .catch((error) => {
-        console.log(error);
-      });
+
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   return (
-    <main>
-      <h1>Chat AI Tutorial</h1>
+    <div className="container">
+      <h1>Solutions Bot</h1>
+      <p1>Tell me what you’re working on or what your question is. I'm here to help!</p1>
 
       <section>
-        {chats && chats.length
-          ? chats.map((chat, index) => (
-              <p key={index} className={chat.role === "user" ? "user_msg" : ""}>
-                <span>
-                  <b>{chat.role.toUpperCase()}</b>
-                </span>
-                <span>:</span>
-                <span>{chat.content}</span>
-              </p>
-            ))
-          : ""}
+        {
+          chats.length > 0 &&
+          chats.map((c) => {
+            if (c.role === "user") {
+              return (<p>{c.role.toUpperCase() + " : " + c.content}</p>)
+            } else {
+              return (<p>{c.role + " : " + c.content.content}</p>)
+            }
+          })
+        }
       </section>
 
       <div className={isTyping ? "" : "hide"}>
         <p>
-          <i>{isTyping ? "Typing" : ""}</i>
+          <i>{isTyping ? "Typing....." : ""}</i>
         </p>
       </div>
 
@@ -87,7 +86,7 @@ function App() {
           onChange={(e) => setMessage(e.target.value)}
         />
       </form>
-    </main>
+    </div>
   );
 }
 
